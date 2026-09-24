@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="title" content="RoboTwin-Phys: Do WAMs and VLAs Understand the Physical World?">
+  <meta name="description" content="A physics-diverse manipulation benchmark on RoboTwin 2.0: 13 physical attributes continuously sampled per episode across 50 bimanual tasks, plus 5,000+ expert demos with 13-dimensional ground-truth physical parameters.">
+  <meta name="keywords" content="robotics, benchmark, manipulation, physics, domain randomization, RoboTwin, VLA, WAM, world model">
+  <meta name="author" content="Peking University, Memo, DEMX">
+  <meta name="robots" content="index, follow">
+  <title>RoboTwin-Phys | Do WAMs and VLAs Understand the Physical World?</title>
+
+  <link rel="stylesheet" href="static/css/index.css">
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+  <style>
+    :root { --main:#6d28d9; --main-dark:#5b21b6; --main-tint:#f4f1fb; --ink:#1e1b2e; --muted:#64748b; }
+    html { scroll-behavior:smooth; font-size:18px; }
+    body { color:var(--ink); }
+
+    /* ---------- 顶部导航 ---------- */
+    .topnav { position:fixed; top:0; left:0; right:0; z-index:50;
+      background:rgba(255,255,255,.88); backdrop-filter:blur(10px);
+      border-bottom:1px solid #ececf4; }
+    .topnav-inner { max-width:1024px; margin:0 auto; padding:10px 20px;
+      display:flex; align-items:center; justify-content:space-between; }
+    .topnav .brand { font-weight:800; font-size:1.05rem; color:var(--ink); letter-spacing:.2px; }
+    .topnav .brand em { color:var(--main); font-style:normal; }
+    .topnav nav a { color:var(--muted); font-size:.9rem; margin-left:18px; text-decoration:none; }
+    .topnav nav a:hover { color:var(--main); }
+    @media (max-width:768px){ .topnav nav { display:none; } }
+    main { padding-top:52px; }
+
+    /* ---------- 通用 ---------- */
+    .factor-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:24px 0 8px; }
+    @media (max-width: 900px) { .factor-grid { grid-template-columns:repeat(2,1fr); } }
+    .factor-card { background:#fff; border:1px solid #e9e6f2; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(30,27,46,.06); }
+    .factor-card h4 { font-size:0.95rem; margin-bottom:8px; }
+    .factor-media { width:100%; aspect-ratio:4/3; border-radius:8px; background:#eeeaf6; overflow:hidden; }
+    .factor-media video, .factor-media img { width:100%; height:100%; object-fit:cover; display:block; }
+    .factor-card input[type=range] { width:100%; margin-top:10px; accent-color:var(--main); }
+    .factor-card .slider-label { text-align:center; color:var(--muted); font-size:0.82rem; margin-top:2px; min-height:1.2em; }
+    .factor-desc { color:var(--muted); font-size:0.8rem; margin-top:8px; }
+    table { border-collapse:collapse; width:100%; margin:16px 0; font-size:0.92rem; background:#fff; }
+    th, td { border:1px solid #e9e6f2; padding:8px 10px; text-align:center; }
+    th { background:var(--main-tint); color:var(--ink); }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media (max-width: 800px) { .grid2 { grid-template-columns:1fr; } }
+    .stats { display:flex; justify-content:center; gap:36px; flex-wrap:wrap; margin-top:28px; }
+    .stat { text-align:center; }
+    .stat-num { font-size:1.8rem; font-weight:700; color:var(--main); }
+    .stat-label { font-size:0.82rem; color:var(--muted); }
+    .muted { color:var(--muted); }
+    h2.sec { font-size:1.6rem; margin-bottom:14px; border-bottom:2px solid var(--main); display:inline-block; padding-bottom:4px; }
+    h3.sec { font-size:1.1rem; margin:18px 0 8px; }
+    .lead { font-size:1.08rem; line-height:1.8; max-width:880px; margin:0 auto; }
+
+    /* ---------- Vision vs Physics 对比卡 ---------- */
+    .vs-card { border-radius:14px; padding:22px; border:1px solid #e9e6f2; }
+    .vs-old { background:#f8fafc; }
+    .vs-new { background:var(--main-tint); border-color:#ddd0f5; }
+    .vs-card h4 { font-size:1.02rem; margin-bottom:10px; }
+    .vs-card .tag { display:inline-block; font-size:.72rem; font-weight:700; padding:2px 10px; border-radius:999px; margin-bottom:10px; }
+    .vs-old .tag { background:#e2e8f0; color:#64748b; }
+    .vs-new .tag { background:var(--main); color:#fff; }
+    .vs-card ul { margin:0; padding-left:18px; color:var(--muted); font-size:.92rem; line-height:1.9; }
+
+    /* ---------- 13 因子网格 ---------- */
+    .pgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:16px; }
+    .pcell { background:#fff; border:1px solid #e9e6f2; border-radius:10px; padding:12px 12px 10px; font-size:.85rem; }
+    .pcell .pi { font-size:1.15rem; }
+    .pcell b { display:block; margin:4px 0 2px; font-size:.88rem; }
+    .pcell span { color:var(--muted); font-size:.78rem; line-height:1.45; display:block; }
+
+    /* ---------- Results ---------- */
+    .result-headline { font-size:1.35rem; line-height:1.6; font-weight:700; max-width:880px; margin:0 auto 6px; text-align:center; }
+    .result-headline em { color:var(--main); font-style:normal; }
+    .fail-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:20px; }
+    @media (max-width:800px){ .fail-grid { grid-template-columns:1fr; } }
+    .fail-card { background:#fff; border:1px solid #e9e6f2; border-radius:12px; overflow:hidden; }
+    .fail-card video { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:#eeeaf6; }
+    .fail-card .fc-cap { padding:10px 14px; font-size:.85rem; color:var(--muted); }
+    .bars { max-width:720px; margin:26px auto 0; }
+    .bar-row { display:flex; align-items:center; gap:12px; margin:10px 0; font-size:.88rem; }
+    .bar-row .bl { width:230px; text-align:right; color:var(--muted); flex-shrink:0; }
+    .bar-track { flex:1; background:#f1eff8; border-radius:6px; height:26px; position:relative; }
+    .bar-fill { position:absolute; left:0; top:0; bottom:0; border-radius:6px; background:var(--main); display:flex; align-items:center; justify-content:flex-end; padding-right:8px; color:#fff; font-weight:700; font-size:.82rem; min-width:38px; }
+    .bar-fill.ok { background:#94a3b8; }
+    @media (max-width:700px){ .bar-row .bl { width:150px; font-size:.78rem; } }
+
+    /* ---------- 信号标签条 ---------- */
+    .chips { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+    .chip { background:var(--main-tint); color:var(--main-dark); border:1px solid #ddd0f5;
+      font-size:.82rem; font-weight:600; padding:5px 14px; border-radius:999px; }
+
+    /* ---------- 叙述性正文 ---------- */
+    .prose { max-width:900px; }
+    .prose p { line-height:1.85; margin-bottom:14px; color:#334155; }
+    .prose b, .prose strong { color:var(--ink); }
+    .kicker { font-size:.78rem; font-weight:800; letter-spacing:.14em; color:var(--main); text-transform:uppercase; margin-bottom:8px; }
+    .abstract-box { background:var(--main-tint); border-left:4px solid var(--main); border-radius:0 12px 12px 0;
+      padding:22px 26px; max-width:920px; margin:0 auto; text-align:left; line-height:1.85; color:#334155; }
+    .schema { background:#f7f6fb; border:1px solid #e9e6f2; border-radius:10px; padding:14px 18px;
+      font-family:ui-monospace,Menlo,monospace; font-size:.8rem; overflow-x:auto; white-space:nowrap; color:#475569; }
+    .obs-list { max-width:820px; margin:20px auto 0; text-align:left; line-height:1.8; color:#334155; }
+    .obs-list li { margin-bottom:10px; }
+    table.detail th, table.detail td { text-align:left; font-size:.86rem; line-height:1.55; }
+    table.detail td:first-child { font-weight:600; white-space:nowrap; }
+
+    /* ---------- Citation ---------- */
+    .cite-wrap { position:relative; }
+    .cite-wrap pre { background:#f7f6fb; border:1px solid #e9e6f2; border-radius:10px; padding:16px; font-size:.85rem; overflow-x:auto; }
+    .copy-btn { position:absolute; top:10px; right:10px; border:1px solid #ddd0f5; background:#fff;
+      color:var(--main); font-size:.8rem; font-weight:600; padding:5px 12px; border-radius:8px; cursor:pointer; }
+    .copy-btn:hover { background:var(--main-tint); }
+    code { background:#f1f5f9; border-radius:6px; padding:1px 6px; font-family:ui-monospace,Menlo,monospace; }
+
+    /* ---------- 全局宽度：内容区与 teaser 统一为 80%（上限 1600px）；必须置底以覆盖上面的限宽 ---------- */
+    .container.is-max-desktop { width:80%; max-width:1600px; }
+    .topnav-inner { width:80%; max-width:1600px; }
+    .prose, .abstract-box, .lead, .obs-list { max-width:100%; }
+    .affil-logos { display:flex; justify-content:center; align-items:center; gap:28px; flex-wrap:wrap; margin-top:14px; }
+    .affil-logos img { height:40px; width:auto; }
+    svg.ic { width:16px; height:16px; fill:currentColor; flex-shrink:0; }
+    .affil-logos img.l1 { height:48px; }  /* PKU+AIIT 120% */
+    .affil-logos img.l3 { height:32px; }  /* DEMX 80% */
+  </style>
+</head>
+<body>
+
+<!-- ================= 顶部导航 ================= -->
+<header class="topnav">
+  <div class="topnav-inner">
+    <span class="brand">RoboTwin-<em>Phys</em></span>
+    <nav>
+      <a href="#motivation">Motivation</a>
+      <a href="#factors">Benchmark</a>
+      <a href="#results">Failures</a>
+      <a href="#dataset">Dataset</a>
+      <a href="#evaluation">Evaluation</a>
+      <a href="#leaderboard">Leaderboard</a>
+      <a href="#citation">Citation</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main-content">
+  <!-- ================= HERO ================= -->
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">RoboTwin-Phys</h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">Jiaqi Zhang<sup>1,2,3,4</sup>,</span>
+              <span class="author-block">Feng Ye<sup>1,†</sup>,</span>
+              <span class="author-block">Mingjia Yang<sup>1</sup>,</span>
+              <span class="author-block">Zhihong Chen<sup>1</sup>,</span>
+              <span class="author-block">Mingkang Xiang<sup>1</sup>,</span>
+              <span class="author-block">Xinglin Yao<sup>1</sup>,</span>
+              <span class="author-block">Yanbin Li<sup>1</sup>,</span>
+              <span class="author-block">Siwei Ma<sup>1</sup>,</span>
+              <span class="author-block">Chuanmin Jia<sup>1,‡</sup></span>
+            </div>
+            <div class="is-size-6 publication-authors" style="margin-top:6px;color:#94a3b8">
+              <span class="eql-cntrb"><small><sup>†</sup>Project Lead &nbsp;&nbsp; <sup>‡</sup>Corresponding Author</small></span>
+            </div>
+            <div class="is-size-6 publication-authors" style="margin-top:2px;color:#64748b">
+              <span class="author-block"><sup>1</sup>Peking University &nbsp;&nbsp; <sup>2</sup>Advanced Institute of Information Technology, Peking University &nbsp;&nbsp; <sup>3</sup>Memo &nbsp;&nbsp; <sup>4</sup>DEMX</span>
+            </div>
+            <div class="affil-logos">
+              <img class="l1" src="assets/logos/1.png" alt="Peking University and AIIT logo">
+              <img src="assets/logos/2.png" alt="Memo logo">
+              <img class="l3" src="assets/logos/3.png" alt="DEMX logo">
+            </div>
+            <p class="subtitle is-5" style="margin-top:12px">
+              <b>Do WAMs and VLAs Understand the Physical World?</b>
+            </p>
+            <div class="column has-text-centered">
+              <div class="publication-links">
+                <span class="link-block">
+                  <a href="https://arxiv.org/abs/2609.26292" target="_blank"
+                     class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1h5l4 4v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm5 1.2V5h2.8L9 2.2zM4.6 7.6h6.8v1.2H4.6V7.6zm0 2.8h6.8v1.2H4.6v-1.2z"/></svg></span><span>Paper</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="https://github.com/yefeng00/RoboTwin_Phys" target="_blank"
+                     class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></span><span>Code</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="#dataset" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1C4.69 1 2 2.12 2 3.5v9C2 13.88 4.69 15 8 15s6-1.12 6-2.5v-9C14 2.12 11.31 1 8 1zm0 1c3.31 0 5 1.12 5 2.5S11.31 7 8 7 3 5.88 3 4.5 4.69 2 8 2zM3 6.1c1.27.94 3.03 1.4 5 1.4s3.73-.46 5-1.4v2.3c0 1.38-2.69 2.5-5 2.5s-5-1.12-5-2.5V6.1zm0 4.4c1.27.94 3.03 1.4 5 1.4s3.73-.46 5-1.4V13c0 1.38-2.69 2.5-5 2.5S3 14.38 3 13v-2.5z"/></svg></span><span>Dataset</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="#leaderboard" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 1.8h1.4v1.6l-.5.8H2V1.8zM5 2.6h9v1.3H5V2.6zM2 6.8h1.4v1.6l-.5.8H2V6.8zM5 7.4h9v1.3H5V7.4zM2 11.8h1.4v1.6l-.5.8H2v-2.4zM5 12.2h9v1.3H5v-1.3z"/></svg></span><span>Leaderboard</span>
+                  </a>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TEASER ================= -->
+  <section style="padding:0.8rem 0 0.6rem">
+    <div style="width:80%;max-width:1600px;margin:0 auto">
+      <img src="assets/teaser.jpg" alt="RoboTwin-Phys: a physically grounded simulation benchmark — from visual diversity to physical diversity" style="width:100%;display:block;border-radius:12px;box-shadow:0 2px 12px rgba(30,27,46,.10)">
+    </div>
+  </section>
+
+  <!-- ================= ABSTRACT ================= -->
+  <section class="section hero is-light" id="abstract" style="padding-top:2.6rem">
+    <div class="container is-max-desktop">
+      <div class="kicker has-text-centered">Abstract</div>
+      <div class="abstract-box">
+        Manipulation benchmarks increasingly randomize what the world <em>looks like</em> — appearance,
+        layout, lighting, viewpoints — but keep what the world <em>is like</em> fixed: mass, friction,
+        restitution, joint damping, and geometry stay at nominal values. <b>RoboTwin-Phys</b> introduces
+        <b>physical-condition diversity</b> as an explicit dimension of robot-manipulation evaluation on the
+        50-task bimanual suite of RoboTwin&nbsp;2.0: <b>13 physical attributes</b> are continuously sampled at
+        the episode level within physically plausible, task-aware ranges, and every condition is verified
+        executable by an expert planner before it enters the benchmark. Together with the benchmark we
+        release a training set of <b>more than 5,000 expert demonstrations</b>, each annotated with the
+        13-dimensional ground-truth physical parameters in effect during its episode — enabling
+        physical-attribute estimation, condition-aware modeling, and physics-conditioned policy training.
+        Evaluations of representative WAMs and VLAs — Fast-WAM, Motus, FACT, π0.5, and GalaxeaVLA — reveal a
+        <b>substantial robustness gap</b>: models that remain effective under existing visual and layout
+        randomization degrade markedly when physical conditions vary. RoboTwin-Phys provides the benchmark,
+        data, and evaluation protocol needed to systematically measure and improve robustness to
+        physical-condition diversity.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MOTIVATION（含滑块视频） ================= -->
+  <section class="section" id="motivation">
+    <div class="container is-max-desktop">
+      <div class="prose" style="margin:0 auto">
+        <div class="kicker">Motivation</div>
+        <h2 class="sec" style="margin-bottom:18px">Why benchmark physical drift?</h2>
+        <p>
+          A manipulation policy deployed in the real world almost never meets the physics it was trained
+          with. Tabletops get waxed or wet, so grasps that used to hold start to slip. A box may be loaded
+          or empty; a bottle may be half-filled, shifting its center of mass mid-grasp. Hinges and drawers
+          age and resist. Workbenches are not perfectly level; camera mounts get bumped during maintenance.
+          None of these changes alter what the scene <em>looks like</em> — yet each of them can decide
+          whether a grasp holds, a placement stays, or a door opens.
+        </p>
+        <p>
+          Today's benchmarks certify robustness to appearance, not to physics.
+          <b>RoboTwin 2.0</b>'s official suite varies backgrounds, lighting, clutter, object poses, and
+          camera viewpoints — while the underlying physical parameters (mass, friction, restitution, joint
+          damping, geometry) are kept at fixed nominal values. A policy can thus ace the official
+          evaluation and still fail the first time the world's physics drifts.
+        </p>
+        <p>
+          <b>Physics is not a constant.</b> Drag the sliders below — <b>same scene, same action, only one
+          physical factor changes each time</b> — and watch outcomes diverge. If physics matters this
+          much, it deserves its own benchmark dimension: physical conditions that are continuously
+          sampled, exactly reproducible, verified feasible, and labeled with ground-truth values.
+        </p>
+      </div>
+      <div class="factor-grid" id="factorGrid"></div>
+      <p class="has-text-centered muted" style="font-size:0.85rem">
+        Each card is one physical factor; each slider runs three levels from the default outward.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= FACTORS ================= -->
+  <section class="section" id="factors">
+    <div class="container is-max-desktop">
+      <div class="prose">
+        <div class="kicker">Benchmark design</div>
+        <p>
+          <b>Factor selection is grounded in deployment reality.</b> Each of the 13 factors maps to a
+          routine, well-documented deployment event — a waxed tabletop, a half-filled bottle, an aging
+          hinge, a bumped camera mount — rather than an arbitrary parameter sweep. The factors group
+          into five families: <b>object properties</b> (mass, center of mass, geometry scale),
+          <b>contact properties</b> (friction, restitution), <b>damping properties</b> (object, arm, and
+          gripper joint damping), <b>task environment</b> (table tilt, table height, external force), and
+          <b>camera configuration</b> (camera distance, camera angle).
+        </p>
+        <p>
+          <b>Continuous, episode-level sampling.</b> The 13 attributes are sampled independently at
+          episode initialization from their designated continuous ranges and remain fixed during the
+          rollout; the episode seed determines the sampling stream, so any instantiated condition can be
+          reproduced exactly. Physical sampling is independent of the original visual and layout
+          randomization — physical variation can be studied in isolation, with visual variation retained,
+          or with both enabled simultaneously.
+        </p>
+        <p>
+          <b>Task-aware physical validity.</b> A single global range is not appropriate for every task.
+          Nine physics-sensitive tasks — including dump_bin_bigbin, grab_roller, beat_block_hammer,
+          put_bottles_dustbin, open_microwave, turn_switch, put_object_cabinet, scan_object, and
+          place_bread_skillet — are automatically routed to dedicated, empirically calibrated
+          configurations, so every benchmark instance remains a physically plausible instance of its
+          task rather than a numerically valid but meaningless simulator state.
+        </p>
+        <p>
+          <b>Expert-verified feasibility.</b> A sampled physical condition is retained as a benchmark
+          instance only when the expert planner can complete the task under it. Failures therefore
+          reflect a model's inability to cope with physical variation — not the absence of a valid
+          solution under the sampled environment.
+        </p>
+      </div>
+
+      <h3 class="sec">13 injectable physical factors</h3>
+      <table class="detail" style="margin-top:14px">
+        <tr><th>Factor</th><th>Physical meaning</th><th>Real-world counterpart</th><th>Typical failure it induces</th></tr>
+        <tr><td>🧊 Friction μ</td><td>Contact friction coefficient</td><td>Waxed / wet tabletop</td><td>Grasp slip, slide-off</td></tr>
+        <tr><td>🏋️ Mass</td><td>Object mass scaling (0.125–4×)</td><td>Loaded vs. empty box</td><td>Drop, unstable placement</td></tr>
+        <tr><td>⚖️ Center of mass</td><td>CoM offset ±1.5 cm per axis</td><td>Half-filled bottle</td><td>In-grasp rotation, topple</td></tr>
+        <tr><td>🎾 Restitution</td><td>Contact bounciness (0–0.5)</td><td>Rubber vs. ceramic parts</td><td>Bounce-out of container</td></tr>
+        <tr><td>🚪 Object joint damping</td><td>Articulated-joint resistance (0–25)</td><td>Aging hinges</td><td>Door / lid won't open</td></tr>
+        <tr><td>🦾 Arm joint damping</td><td>Robot arm PD damping (0.5–3×)</td><td>Aging actuators</td><td>Sloppy / overdamped motion</td></tr>
+        <tr><td>🤏 Gripper damping</td><td>Gripper PD damping (0.5–3×)</td><td>Worn gripper drive</td><td>Unstable grasp force</td></tr>
+        <tr><td>📐 Table tilt</td><td>Non-level workspace (0–2°)</td><td>Unleveled table</td><td>Roll-away, slow topple</td></tr>
+        <tr><td>🌬️ External force</td><td>Persistent force up to 0.1 mg</td><td>Airflow, conveyor vibration</td><td>Drift during transport</td></tr>
+        <tr><td>📦 Geometry scale</td><td>Uniform object scaling (0.85–1.05×)</td><td>Different product batches</td><td>Grasp-pose mismatch</td></tr>
+        <tr><td>🪑 Table height</td><td>Workspace height (−8–0 cm)</td><td>Non-standard furniture</td><td>Out-of-workspace reach</td></tr>
+        <tr><td>🎥 Camera distance</td><td>Head-camera displacement: orbit 0–10 cm or shift 0–3 cm</td><td>Bumped camera mount</td><td>Viewpoint generalization gap</td></tr>
+        <tr><td>📸 Camera angle</td><td>Head-camera rotation 0–10°</td><td>Tilted camera mount</td><td>Mis-estimated object poses</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= RESULTS ================= -->
+  <section class="section hero is-light" id="results">
+    <div class="container is-max-desktop">
+      <div class="has-text-centered">
+        <h2 class="sec">Failure cases current benchmarks never produce</h2>
+      </div>
+
+      <div class="fail-grid">
+        <div class="fail-card">
+          <video src="assets/videos_web2/com2/final/com2_fail.mp4" autoplay muted loop playsinline></video>
+          <div class="fc-cap">⚖️ Off-center CoM — the rolling pin swings down mid-grasp.</div>
+        </div>
+        <div class="fail-card">
+          <video src="assets/videos_web2/restitution/rest_fail.mp4" autoplay muted loop playsinline></video>
+          <div class="fc-cap">🎾 High restitution — the ball bounces out of the bowl.</div>
+        </div>
+        <div class="fail-card">
+          <video src="assets/videos_web2/damping_v2/drawer_fail.mp4" autoplay muted loop playsinline></video>
+          <div class="fc-cap">🚪 Aged joint damping — the drawer barely opens.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DATASET ================= -->
+  <section class="section" id="dataset">
+    <div class="container is-max-desktop">
+      <h2 class="sec">Dataset</h2>
+      <div class="prose">
+        <p>
+          Along with the benchmark we release <b>RoboTwin-Phys Training Set v1</b>: more than
+          <b>5,000 expert episodes</b> spanning the physical-condition distribution defined by the
+          benchmark. Demonstrations are generated with the established expert pipeline — physics-sensitive
+          tasks are routed to their dedicated configurations, visual and layout randomization remains
+          available during collection, and every retained episode is verified executable under its
+          instantiated physical condition. The data remain fully compatible with the official RoboTwin
+          format, so existing WAM and VLA pipelines can consume them without any change to their
+          trajectory interfaces.
+        </p>
+      </div>
+      <table>
+        <tr><th>Component</th><th>Content</th><th>Format</th></tr>
+        <tr><td>Trajectories</td><td>Actions, states, and camera streams for every episode</td><td>HDF5 (official RoboTwin format)</td></tr>
+        <tr><td>Videos</td><td>Corresponding MP4 recordings</td><td>MP4</td></tr>
+        <tr><td>phys_meta</td><td>The 13 physical attributes instantiated for the episode</td><td>JSON, per episode</td></tr>
+        <tr><td>Manifest</td><td>Mapping between tasks, benchmark configurations, and episode counts</td><td>Included in the release</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= EVALUATION ================= -->
+  <section class="section" id="evaluation" style="background:#faf9fd">
+    <div class="container is-max-desktop">
+      <h2 class="sec">Evaluation Protocol</h2>
+      <div class="prose">
+        <p>
+          <b>Three environment protocols.</b> All tasks and all methods are evaluated under a single
+          shared setup with three conditions: <b>Clean</b> — all benchmark randomization disabled,
+          corresponding to the nominal environment configuration; <b>Official Random</b> — the original
+          visual and layout randomization of RoboTwin 2.0 enabled, with physical parameters at their
+          nominal values; <b>Physical Random</b> — the original randomization retained, and the 13
+          physical attributes additionally sampled according to the RoboTwin-Phys protocol. This keeps
+          every reported number comparable across methods and isolates physical robustness from visual
+          robustness.
+        </p>
+        <p>
+          <b>Task-aware configurations.</b> Nine physics-sensitive tasks are routed to dedicated,
+          empirically calibrated physical domains — the exact task-specific configurations are released
+          with the benchmark — while all other tasks share the global configuration. This ensures the
+          benchmark measures robustness to physical diversity rather than artificially induced failure
+          cases.
+        </p>
+        <p>
+          <b>Feasibility filtering.</b> The expert planner is run in advance on every instantiated
+          condition; episodes it cannot complete are excluded from the evaluation pool. Reported
+          failures therefore reflect the evaluated model's ability to cope with physical variation, not
+          the absence of a valid solution under the sampled environment.
+        </p>
+        <p>
+          <b>Reporting.</b> Each task is evaluated with 100 rollout episodes. We report per-task and
+          aggregate success rates under each protocol; Clean and Official Random numbers are the
+          models' reported results from the corresponding public benchmark evaluations, while Physical
+          Random is evaluated by us. The complete 50-task breakdown for Fast-WAM, Motus, and FACT is in
+          the report (Appendix D).
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LEADERBOARD ================= -->
+  <section class="section hero is-light" id="leaderboard">
+    <div class="container is-max-desktop">
+      <h2 class="sec">Leaderboard</h2>
+      <table>
+        <tr><th>Method</th><th>Clean</th><th>Official Random</th><th>Physical Random</th></tr>
+        <tr><td>Fast-WAM</td><td>91.88</td><td>91.78</td><td><b>44.24</b></td></tr>
+        <tr><td>Motus</td><td>88.66</td><td>87.02</td><td><b>39.60</b></td></tr>
+        <tr><td>FACT</td><td>88.40</td><td>86.60</td><td><b>39.14</b></td></tr>
+        <tr><td>π0.5</td><td>82.74</td><td>76.76</td><td><b>31.60</b></td></tr>
+        <tr><td>GalaxeaVLA (G0.5)</td><td>93.70</td><td>92.80</td><td><b>37.83</b></td></tr>
+      </table>
+      <p class="muted" style="font-size:0.85rem">
+        Aggregate success rates (%) on 50 tasks; Physical Random uses 100 rollout episodes per task.
+        Clean and Official Random are reported results from public benchmark evaluations; Physical
+        Random is evaluated by us.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= CITATION ================= -->
+  <section class="section" id="citation">
+    <div class="container is-max-desktop">
+      <h2 class="sec">Citation</h2>
+      <div class="cite-wrap">
+        <pre id="bibtex">@article{zhang2026robotwinphys,
+  title   = {RoboTwin-Phys: Do WAMs and VLAs Understand the Physical World?},
+  author  = {Zhang, Jiaqi and Ye, Feng and Yang, Mingjia and Chen, Zhihong and Xiang, Mingkang and Yao, Xinglin and Li, Yanbin and Ma, Siwei and Jia, Chuanmin},
+  journal = {arXiv preprint arXiv:2609.26292},
+  year    = {2026}
+}</pre>
+        <button class="copy-btn" onclick="copyBib(this)"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h8A1.5 1.5 0 0 1 14 3v9.5h-1.5V3H4.5V1.5zM2.5 4h8A1.5 1.5 0 0 1 12 5.5V14a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 1 14V5.5A1.5 1.5 0 0 1 2.5 4zm0 1.5V14h8V5.5h-8z"/></svg> Copy</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer has-text-centered muted" style="font-size:0.85rem">
+    RoboTwin-Phys · built on RoboTwin 2.0 (SAPIEN) · MEMO Technical Report · 2026
+  </footer>
+</main>
+
+<script>
+/* ---------- BibTeX 复制 ---------- */
+function copyBib(btn){
+  const text = document.getElementById('bibtex').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.innerHTML = '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.6 12.4 3.2 9l-1.1 1.1 4.5 4.5 8.3-8.3-1.1-1.1z"/></svg> Copied';
+    setTimeout(() => btn.innerHTML = '<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h8A1.5 1.5 0 0 1 14 3v9.5h-1.5V3H4.5V1.5zM2.5 4h8A1.5 1.5 0 0 1 12 5.5V14a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 1 14V5.5A1.5 1.5 0 0 1 2.5 4zm0 1.5V14h8V5.5h-8z"/></svg> Copy', 1600);
+  });
+}
+
+/* ---------- Teaser 滑块卡片 ---------- */
+const FACTORS = [
+  {
+    key: "friction", name: "Friction μ ↓", icon: "🧊",
+    levels: ["μ = 0.5 (topples over)", "μ = 0.2 (slides 0.2m)", "μ = 0.1 (slides 0.4m)", "μ = 0.05 (slides 0.7m)", "μ = 0.01 (flies off)"],
+    videos: ["assets/videos_web2/friction_v3/phenomenon/L1_mu0.5.mp4","assets/videos_web2/friction_v3/phenomenon/L2_mu0.2.mp4","assets/videos_web2/friction_v3/phenomenon/L3_mu0.1.mp4","assets/videos_web2/friction_v3/phenomenon/L4_mu0.05.mp4","assets/videos_web2/friction_v3/phenomenon/L5_mu0.01.mp4"],
+    desc: "The gripper flicks the can at 0.7 m/s. High μ → it topples; low μ → it slides away.",
+  },
+  {
+    key: "mass", name: "Center of mass", icon: "⚖️",
+    levels: ["lever 0 mm (level)", "lever 17 mm", "lever 20 mm (23°)", "lever 30 mm (32°)", "lever 40 mm (36°)"],
+    videos: ["assets/videos_web2/com2/final/com2_L1.mp4","assets/videos_web2/com2/final/com2_L2.mp4","assets/videos_web2/com2/final/com2_L3.mp4","assets/videos_web2/com2/final/com2_L4.mp4","assets/videos_web2/com2/final/com2_L5.mp4"],
+    desc: "One gripper pinches a rolling pin at the same spot. Off-center CoM → it swings down.",
+  },
+  {
+    key: "restitution", name: "Restitution ↑", icon: "🎾",
+    levels: ["e = 0 (dead drop)", "e = 0.2", "e = 0.4", "e = 0.6", "e = 0.8 (bounces out)"],
+    videos: ["assets/videos_web2/restitution/rest_L1.mp4","assets/videos_web2/restitution/rest_L2.mp4","assets/videos_web2/restitution/rest_L3.mp4","assets/videos_web2/restitution/rest_L4.mp4","assets/videos_web2/restitution/rest_L5.mp4"],
+    desc: "The gripper drops a ball into a bowl. Higher e → bigger bounce.",
+  },
+  {
+    key: "damping", name: "Joint damping ↑", icon: "🚪",
+    levels: ["opens 100%", "opens 69%", "opens 28%", "opens 9%", "won't open (2%)"],
+    videos: ["assets/videos_web2/damping_v2/drawer_L1.mp4","assets/videos_web2/damping_v2/drawer_L2.mp4","assets/videos_web2/damping_v2/drawer_L3.mp4","assets/videos_web2/damping_v2/drawer_L4.mp4","assets/videos_web2/damping_v2/drawer_L5.mp4"],
+    desc: "The gripper pulls a drawer. Higher joint damping → less it opens.",
+  },
+];
+
+const grid = document.getElementById('factorGrid');
+const PICK = [0, 2, 4];
+FACTORS.forEach(f => {
+  const card = document.createElement('div');
+  card.className = 'factor-card';
+  card.innerHTML = `
+    <h4>${f.icon} ${f.name}</h4>
+    <div class="factor-media"><video id="img_${f.key}" src="${f.videos[0]}" autoplay muted loop playsinline></video></div>
+    <input type="range" min="0" max="2" value="0" step="1" id="sl_${f.key}">
+    <div class="slider-label" id="lb_${f.key}">${f.levels[0]}</div>
+    <p class="factor-desc">${f.desc}</p>`;
+  grid.appendChild(card);
+  card.querySelector(`#sl_${f.key}`).addEventListener('input', e => {
+    const i = PICK[+e.target.value];
+    const el = document.getElementById(`img_${f.key}`);
+    el.src = f.videos[i];
+    el.play().catch(() => {});
+    document.getElementById(`lb_${f.key}`).textContent = f.levels[i];
+  });
+});
+</script>
+</body>
+</html>

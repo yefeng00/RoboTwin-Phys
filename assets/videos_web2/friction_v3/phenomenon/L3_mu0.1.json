@@ -1,0 +1,15 @@
+{
+  "factor": "friction",
+  "level": "L3",
+  "mu_value": 0.1,
+  "task": "flick strong push 0.7 m/s (aloha-agilex right gripper)",
+  "seed": 7601,
+  "episode_idx": 0,
+  "outcome": "slide",
+  "displacement_net_m": 0.3928591475223267,
+  "slide_path_len_m": 0.39287290202508335,
+  "peak_speed_mps": 0.8623813872657208,
+  "mu_est_coast": 0.10035440480911433,
+  "source": "/data/yefeng/homepage_videos/friction_v3/raw07/flick/L3/ep_000/head_camera.mp4",
+  "description": "μ=0.1 夹爪强推易拉罐：slide，净位移 0.393m"
+}
